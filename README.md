@@ -32,7 +32,10 @@ O sistema calcula e a IA interpreta. Toda conta é feita em código, e o Gemini 
 - **Uma pessoa sempre decide.** A IA propõe o ICP, mas só a Diretoria publica. O agente recomenda contatar ou não, mas quem liga é sempre uma pessoa.
 - **Modo demonstração.** Sem chave configurada, ou se a cota do Gemini acabar, o ELO usa textos padrão montados a partir dos mesmos números. A demonstração nunca para.
 
-Onde o Gemini entra: leitura das análises, resumo da proposta de ICP, abertura da ligação e perguntas SPIN do dossiê.
+Onde o Gemini entra: conversa livre com o CITi.AI, leitura das análises, resumo da proposta de ICP, abertura da ligação e perguntas SPIN do dossiê.
+
+- **Conversa livre.** O CITi.AI responde dúvidas sobre conceitos do Comercial, usando um glossário tirado do treinamento comercial, sobre como usar o ELO e sobre os dados do funil. Pedidos de ação, como avaliar uma empresa, gerar o ICP ou calcular uma métrica, abrem o fluxo certo.
+- **Fora da base, com permissão.** Quando a resposta não está nos dados do CITi, o agente avisa e pergunta se pode pesquisar na internet. Só depois do "sim" ele busca, com o Gemini e o Google Search, e mostra as fontes.
 
 ## Estrutura
 

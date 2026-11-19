@@ -1039,6 +1039,23 @@ details.pd-cold summary::-webkit-details-marker{display:none}
 .src-pill--gemini{background:rgba(77,142,247,.14);color:#9fc2ff}
 .src-pill--descartado{background:rgba(242,193,75,.12);color:#f2c14b}
 .panel-ai .src-pill{margin-top:10px}
+
+.pf-res__t{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;padding:0;color:var(--muted);cursor:pointer;text-align:left}
+.pf-res__t h3{margin:0!important;flex:1}
+.pf-res__t span{font-size:12px}
+.pf-res__t svg{transition:transform .35s cubic-bezier(.22,1,.36,1)}
+.pf-res.is-closed .pf-res__t svg{transform:rotate(180deg)}
+.pf-res__t:hover{color:var(--text)}
+.pf-res__body{display:grid;grid-template-rows:1fr;transition:grid-template-rows .4s cubic-bezier(.22,1,.36,1),opacity .3s}
+.pf-res__in{min-height:0;overflow:hidden;padding-top:12px}
+.pf-res.is-closed{padding-top:12px;padding-bottom:12px}
+.pf-res.is-closed .pf-res__body{grid-template-rows:0fr;opacity:0}
+.fonte{margin:-6px 0 0;font-size:12.5px;color:var(--muted)}
+.srcs{display:grid;gap:6px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.03);font-size:13px}
+.srcs b{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.srcs a{color:#9fc2ff;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srcs a:hover{text-decoration:underline}
+.src-pill--web{background:rgba(106,76,240,.16);color:#c2b4ff}
 </style>
 </head>
 <body>
@@ -1353,7 +1370,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
         <div class="orb" aria-hidden="true"><span class="orb__glow"></span><span class="orb__ring"></span><span class="orb__ring orb__ring--2"></span><span class="orb__core"><img src="assets/blob-blue.webp" alt=""></span><i class="orb__dot"></i><i class="orb__dot"></i></div>
         <p class="eyebrow">Agente de estratégia do Comercial</p>
         <h1>CITi<b class="grad">.AI</b></h1>
-        <p id="aiHello">Escolha um modo abaixo. No ICP, eu interpreto os resultados do funil; o cálculo é sempre feito pelo sistema, nunca por mim.</p>
+        <p id="aiHello">Pergunte o que quiser: conceitos do Comercial, como usar o ELO, dados do funil, uma empresa ou uma métrica.</p>
       </section>
     </div>
   </div>
@@ -1366,7 +1383,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
       </div>
       <form class="ask" id="ask">
         <label for="askIn" class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Mensagem para o CITi.AI</label>
-        <textarea id="askIn" rows="1" placeholder="Pergunte sobre o ICP ou peça uma métrica…"></textarea>
+        <textarea id="askIn" rows="1" placeholder="Pergunte qualquer coisa ao CITi.AI…"></textarea>
         <button class="send" type="submit" aria-label="Enviar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
       </form>
       <div class="modes" role="group" aria-label="Modo do agente">
@@ -2996,10 +3013,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     await think(body, [['Carregando o modo Prospecção', 'Sistema']]);
     add(body, `<p class="say">Modo <b>Prospecção</b>. Me diga uma empresa e eu respondo se vale <b>contatar agora, esperar ou descartar</b>, com a temperatura em 4 dimensões e o dossiê pronto para a ligação. O Fit usa o ICP v${ICP.cur.v} aprovado pela Diretoria.</p>`);
   }
-  function prospectRoute(text){
-    if (/traga|sugir|encontr|quais leads|novos leads|me d[eaá]/.test(norm(text))) return run(text, bring);
-    return run(text, b => evaluate(b, text));
-  }
+  function prospectRoute(text){ return route(text); }
   threadIn.addEventListener('click', e => {
     const ev = e.target.closest('[data-eval]');
     if (ev && !busy) return run(`Avaliar ${ev.dataset.eval}`, b => evaluate(b, ev.dataset.eval));
@@ -3268,7 +3282,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     const kind = /funil|perde mais|gargalo|etapa/.test(t) ? 'funil' : /caiu|queda|piorou|mes /.test(t + ' ') || MONTH_RX.test(t) && /convers|avan/.test(t) ? 'mes'
       : /canal|origem|quente/.test(t) ? 'origem' : /decisor|chegar/.test(t) ? 'decisor' : /motivo|perdemos|dizem nao|recus/.test(t) ? 'motivos'
       : /gatilho/.test(t) ? 'gatilho' : /tempo|parad|demor|lent/.test(t) ? 'tempo' : /meta|receita|faturamos/.test(t) ? 'receita' : null;
-    if (!kind) return metric(body, q, null, rows, DS.has);
+    if (!kind) return looksMetric(q) ? metric(body, q, null, rows, DS.has) : converse(body, q);
     const c = CARDS.find(x => x.id === kind), miss = c.need.filter(f => !has(f));
     await think(body, [[`Calculando sobre ${rows.length} leads (${DS.name})`, 'Código'], ['Escrevendo a leitura com os números calculados', 'IA'], ['Conferindo cada número citado', 'Código']]);
     if (miss.length){ add(body, `<div class="verdict verdict--no"><span class="verdict__i">×</span><div><b>Não consigo responder com esta base</b>Falta ${miss.map(f => `a coluna "${FIELDS[f]}"`).join(' e ')}. Não vou estimar sem o dado.</div></div>`); return; }
@@ -3314,6 +3328,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     const b = e.target.closest('button'); if (!b || aBusy) return;
     if (b.dataset.measure){ const q = pendingMetric; b.parentElement.remove(); return aRun(b.textContent, x => metric(x, q, b.dataset.measure, rowsFor(), DS.has)); }
     const act = b.dataset.act;
+    if (webAction(b, aRun)) return;
     if (act === 'mconfirm'){ b.closest('[data-confirm]').remove(); return aRun('Confirmar e calcular', metricCalc); }
     if (act === 'mcancel'){ b.closest('[data-confirm]').remove(); pendingMetric = null; $('anIn2').focus(); return; }
     if (act === 'msave'){ pinMetric(lastMetric); b.disabled = true; b.textContent = 'Fixada no painel'; return; }
@@ -3340,6 +3355,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
   if (!PD || PD.date !== localISO()) PD = {date:localISO(), log:[]};
   const savePD = () => { try { localStorage.setItem('elo.pday', JSON.stringify(PD)); } catch (e) {} };
   let pdScope = null, pdCur = null, pdQ = [], pdT0 = Date.now(), pdOpen = null, pdRes = null;
+  let pdResOpen = true; try { pdResOpen = localStorage.getItem('elo.pdres') !== '0'; } catch (e) {}
   const TLv = {quente:'Quente', morno:'Morno', frio:'Frio', na:'Sem avaliação'};
 
   function leadCard(l){
@@ -3414,9 +3430,9 @@ details.pd-cold summary::-webkit-details-marker{display:none}
           ${a ? `<div class="fitchips" style="margin-top:12px">${a.traits.map(t => `<span class="${t.ok ? '' : 'no'}">${t.ok ? '✓' : '×'} ${t.k}</span>`).join('')}</div>` : ''}
           <button class="btn btn--sm" type="button" data-dossie="${esc(c.name)}" style="margin-top:12px">Dossiê completo no CITi.AI</button></div>
       </div>
-      <div class="pf-res"><h3>Como foi a ligação?</h3>
-        <div class="res">${RES.map((r, i) => `<button class="rb ${r.c ? 'rb--' + r.c : ''}" type="button" data-res="${r.k}">${IC(r.ico)}<span>${r.l}</span><kbd>${i + 1}</kbd></button>`).join('')}</div>
-        <p class="res-hint">Cada opção abre uma confirmação, onde você pode deixar um comentário.</p>
+      <div class="pf-res ${pdResOpen ? '' : 'is-closed'}"><button class="pf-res__t" type="button" id="pdResToggle" aria-expanded="${pdResOpen}" aria-controls="pdResBody"><h3>Como foi a ligação?</h3><span>${pdResOpen ? 'recolher' : 'abrir · teclas 1 a 7'}</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></button>
+        <div class="pf-res__body" id="pdResBody"><div class="pf-res__in"><div class="res">${RES.map((r, i) => `<button class="rb ${r.c ? 'rb--' + r.c : ''}" type="button" data-res="${r.k}">${IC(r.ico)}<span>${r.l}</span><kbd>${i + 1}</kbd></button>`).join('')}</div>
+        <p class="res-hint">Cada opção abre uma confirmação, onde você pode deixar um comentário.</p></div></div>
       </div>
     </div>`;
   }
@@ -3469,6 +3485,8 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     if (q){ pdCur = q.dataset.q; pdT0 = Date.now(); renderPD(); $('pdFocus').scrollIntoView({behavior:'smooth', block:'start'}); return; }
     const dn = e.target.closest('[data-done]'); if (dn){ const i = +dn.dataset.done; pdOpen = pdOpen === i ? null : i; renderPD(); return; }
     if (sc){ pdScope = sc.dataset.scope; pdCur = null; renderPD(); return; }
+    const tg = e.target.closest('#pdResToggle');
+    if (tg){ pdResOpen = !pdResOpen; try { localStorage.setItem('elo.pdres', pdResOpen ? '1' : '0'); } catch (er) {} const box = tg.closest('.pf-res'); box.classList.toggle('is-closed', !pdResOpen); tg.setAttribute('aria-expanded', String(pdResOpen)); tg.querySelector('span').textContent = pdResOpen ? 'recolher' : 'abrir · teclas 1 a 7'; return; }
     if (r){ openRes(r.dataset.res); return; }
     const cp = e.target.closest('[data-copy]'); if (cp){ const t = cp.closest('.panel-ai').querySelector('.opener').textContent; navigator.clipboard?.writeText(t).then(() => cp.textContent = 'Copiado', () => cp.textContent = 'Selecione e copie'); return; }
     if (e.target.closest('#pdSumOpen')) openSummary();
@@ -3575,11 +3593,105 @@ details.pd-cold summary::-webkit-details-marker{display:none}
   }
   window.ELO = Object.assign(window.ELO || {}, {homeEnter:renderHome});
 
+  // ---------- guia: glossário, conversa livre e busca na internet ----------
+  const TR = 'Treinamento Comercial do CITi (PS 2026.2)';
+  const GLOSS = [
+    {n:'Lead quente', k:['lead quente','leads quentes'], f:TR + ' + ELO', t:'Lead quente é a empresa que cumpre o ICP e tem um motivo real para conversar agora, como um gatilho recente, acesso a quem decide ou uma indicação. No ELO, "quente" sai da combinação de quatro dimensões: Fit, Momento, Acesso e Histórico.'},
+    {n:'Lead frio', k:['lead frio','leads frios'], f:TR + ' + ELO', t:'Lead frio é a empresa que está fora do ICP, mostra sinais do anti-perfil ou não tem nenhum motivo para conversar agora. O CITi.AI recomenda descartar ou esperar, e esses leads ficam fora da fila do Prospect Day.'},
+    {n:'Lead', k:['lead','leads'], f:TR, t:'Lead é uma empresa que pode virar cliente do CITi e com quem o Comercial ainda está abrindo conversa. Ele começa na Prospecção e, conforme a conversa avança, passa por Qualificação, Diagnóstico, Proposta e Negociação até virar projeto na Entrega.'},
+    {n:'ICP', k:['icp','perfil de cliente ideal','cliente ideal'], f:TR, t:'ICP (Ideal Customer Profile) é o perfil da empresa que mais ganha com o que o CITi faz e que o CITi mais consegue ajudar. Hoje são quatro traços: porte, região, empresa tradicional e complexidade. No ELO, o ICP é recalculado a partir dos resultados do funil e só a Diretoria publica uma nova versão.'},
+    {n:'Anti-perfil', k:['anti-perfil','antiperfil','anti perfil'], f:TR, t:'Anti-perfil são os sinais de que não vale seguir com um lead: quer só mão de obra cobrada por hora, não tem orçamento ou quem decide, ou tem uma operação pequena demais para o tipo de projeto do CITi. No ELO, os motivos de perda registrados alimentam o anti-perfil.'},
+    {n:'Ciclo de venda', k:['ciclo de venda','etapas','funil'], f:TR, t:'O ciclo de venda do CITi tem seis etapas: Prospecção, Qualificação, Diagnóstico, Proposta, Negociação e Entrega. No ELO, elas são as colunas do Pipeline e as etapas do funil na Análise.'},
+    {n:'Prospecção', k:['prospeccao','prospectar'], f:TR, t:'Prospecção é a etapa de montar a lista de empresas, pesquisar cada uma e fazer o primeiro contato. No ELO, o modo Prospecção do CITi.AI avalia a empresa e monta o dossiê antes da ligação.'},
+    {n:'Qualificação', k:['qualificacao','qualificar'], f:TR, t:'Qualificação é a etapa de confirmar se existe dor, orçamento e alguém que decide. Se faltar um desses três, o lead tende a não avançar.'},
+    {n:'Diagnóstico e SPIN', k:['spin','diagnostico'], f:TR, t:'No Diagnóstico, o Comercial faz perguntas até achar o problema real. O método SPIN organiza essas perguntas em quatro tipos: Situação (como é hoje), Problema (o que trava), Implicação (quanto isso custa) e Necessidade (o que mudaria se resolvesse). Cada resposta alimenta a proposta que vai para Soluções.'},
+    {n:'Gatilho', k:['gatilho','gatilhos'], f:'Desafio Comercial 1 do CITi', t:'Gatilho é um fato recente que justifica ligar agora, como uma nova filial, uma expansão, uma troca de liderança, uma captação ou uma notícia do setor. O CITi.AI nunca inventa um gatilho: sem gatilho, a dimensão Momento fica baixa.'},
+    {n:'Decisor', k:['decisor','quem decide'], f:TR, t:'Decisor é a pessoa que aprova o projeto e o orçamento. Chegar até ela é um dos maiores filtros do funil, e a Análise mostra quanto chegar ou não ao decisor muda a taxa de avanço.'},
+    {n:'Prospect Day', k:['prospect day','prospectday'], f:'Rito do Comercial do CITi', t:'Prospect Day é o dia dedicado a ligar para leads. No ELO, a tela de mesmo nome traz a fila do dia ordenada por temperatura, o dossiê de cada empresa ao lado e o registro de cada ligação com uma confirmação e um comentário opcional.'},
+    {n:'Discovery', k:['discovery'], f:TR, t:'Discovery é o projeto inicial de investigação do problema do cliente, feito com Soluções antes do desenvolvimento. O Comercial conta como avanço quando o lead aceita um Discovery ou pede uma proposta.'},
+    {n:'Taxa de avanço', k:['taxa de avanco','avancou','avanco'], f:'ELO', t:'No ELO, um lead "avançou" quando marcou reunião, aceitou um Discovery ou pediu proposta, o mesmo critério usado no treinamento comercial para construir o ICP. A taxa de avanço é a parte dos leads de um grupo que avançou.'}
+  ];
+  const GUIDE = [
+    {n:'Prospect Day', k:['como uso o prospect day','como funciona o prospect day','fila do dia','registrar ligacao','registrar uma ligacao'], t:'No Prospect Day, comece pelo primeiro lead da fila: ela já vem ordenada por temperatura. Leia o "Por que ligar hoje" e a abertura, ligue e registre o resultado com um dos sete botões, ou pelas teclas 1 a 7. Cada registro pede confirmação, aceita um comentário e atualiza o Pipeline sozinho.'},
+    {n:'Pipeline', k:['pipeline','mover lead','mover um lead','criar lead','novo lead','cartao'], t:'No Pipeline, arraste o cartão do lead entre as etapas ou use "Mover para" no detalhe. Para mover para Perdido, é preciso escolher o motivo; para "Retomar em", uma data. O botão "Novo lead" cria um cartão, e o globo mostra os clientes do CITi.'},
+    {n:'Gerar ICP', k:['gerar icp','gerar um icp','novo icp','como o icp e gerado','como gerar','aprovar icp'], t:'No CITi.AI, modo ICP, a Diretoria clica em "Gerar novo ICP". O sistema calcula as taxas de cada traço, o Gemini propõe e explica a nova versão, e cada número citado é conferido. A Diretoria aprova, edita ou descarta, e cada versão fica no histórico.'},
+    {n:'Avaliar empresa', k:['avaliar empresa','avaliar uma empresa','dossie','temperatura'], t:'No CITi.AI, modo Prospecção, digite o nome da empresa ou peça "me traga leads". O agente mostra a temperatura em quatro dimensões, a decisão (contatar, esperar ou descartar) e o dossiê para a ligação. De lá dá para adicionar o lead ao Pipeline.'},
+    {n:'Análise', k:['analise','planilha','grafico','dashboard','metricas'], t:'Na Análise, os gráficos já usam os dados do Pipeline. Você pode subir uma planilha CSV ou XLSX, conferir o mapeamento das colunas e perguntar ao CITi.AI pela barra de baixo. Métricas pedidas e confirmadas podem ser fixadas no painel.'},
+    {n:'Perfis', k:['perfil','permissao','permissoes','quem pode'], t:'Há três perfis. A Diretoria gera e aprova o ICP e vê tudo. A Gerência Comercial vê o time e sobe planilhas. A Gerência de Contas prospecta e vê só os próprios números.'}
+  ];
+  function localAnswer(text){
+    const t = ' ' + norm(text).replace(/[?!.,]/g, ' ') + ' ';
+    const has = k => t.includes(' ' + k + ' ') || t.includes(' ' + k);
+    const g = GUIDE.find(x => x.k.some(has));
+    if (g && /como|onde|usar|uso|funciona|faco|fazer/.test(t)) return {tipo:'resposta', texto:g.t, fonte:'Guia do ELO'};
+    const w = GLOSS.find(x => x.k.some(has));
+    if (w) return {tipo:'resposta', texto:w.t, fonte:w.f};
+    if (g) return {tipo:'resposta', texto:g.t, fonte:'Guia do ELO'};
+    if (/^\s*(oi|ola|bom dia|boa tarde|boa noite|e ai)\b/.test(t)) return {tipo:'resposta', texto:`Oi, ${me().name}! Posso explicar conceitos do Comercial, mostrar como usar o ELO, responder com os dados do funil, avaliar uma empresa ou calcular uma métrica. O que você precisa?`, fonte:''};
+    return {tipo:'fora_da_base', texto:'Essa pergunta eu não consigo responder com a base de dados do CITi. Posso pesquisar na internet?', busca:text};
+  }
+  function baseContext(){
+    const m = compute(DB), pl = pipeLeads(), c = ICP.cur;
+    const etapas = {}; pl.forEach(l => etapas[l.stage] = (etapas[l.stage] || 0) + 1);
+    return {
+      dados:{
+        icp_vigente:{versao:c.v, porte:`R$${c.pMin} a R$${c.pMax} mi por ano`, regiao:c.regiao, tradicional:c.trad, unidades_minimas:c.minFil, anti_perfil:c.anti, persona:c.persona},
+        pipeline_agora:{leads_por_etapa:etapas, leads_quentes:pl.filter(l => l.temp?.level === 'quente').length, sem_atividade_7_dias:stale(7).length},
+        historico_funil:{leads:m.all.n, taxa_de_avanco_pct:m.all.ar, maior_queda:m.worst ? `${m.worst.from} para ${m.worst.to}: ${m.worst.r}% passam` : null, motivos_de_perda:m.mot.slice(0, 4).map(x => `${x.label}: ${x.n}`), melhores_origens:m.origem.slice(0, 2).map(x => `${x.label}: ${x.ar}% de avanço`)},
+        prospect_day_hoje:{ligacoes:PD.log.length, reunioes:PD.log.filter(x => x.k === 'rm').length},
+        observacao:'Todos os dados do ELO nesta demonstração são fictícios.'
+      },
+      glossario:GLOSS.map(g => ({termo:g.n, definicao:g.t, fonte:g.f})),
+      guia:GUIDE.map(g => ({tela:g.n, como_usar:g.t}))
+    };
+  }
+  const HIST = [];
+  let pendingWeb = null;
+  const para = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n+/g, '<br>');
+  const webBtns = `<div class="acts" data-webask><button class="btn btn--primary" type="button" data-act="web"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>Sim, pesquisar na internet</button><button class="btn" type="button" data-act="noweb">Agora não</button></div>`;
+  async function converse(body, text){
+    await think(body, [['Procurando na base do CITi e no guia do ELO', 'Sistema'], ['Entendendo a pergunta', 'IA']]);
+    const d = await aiCall('conversa', {mensagem:text, modo:mode || 'geral', perfil:me().role, historico:HIST.slice(-6), base:baseContext()});
+    const ok = d && !d.rejected && d.texto && d.tipo;
+    const r = ok ? d : localAnswer(text);
+    HIST.push({quem:'usuario', texto:text}, {quem:'citi.ai', texto:r.texto});
+    if (r.tipo === 'metrica' && r.consulta) { add(body, `<p class="say">${para(r.texto)}</p>`); return metric(body, r.consulta, null, body.closest('.an-thread') ? rowsFor() : DB, body.closest('.an-thread') ? DS.has : null); }
+    if (r.tipo === 'fora_da_base'){
+      pendingWeb = r.busca || text;
+      add(body, `<p class="say">${para(r.texto)}</p>${webBtns}`);
+      return;
+    }
+    add(body, `<p class="say">${para(r.texto)}</p>${r.fonte ? `<p class="fonte">Fonte: ${esc(r.fonte)}</p>` : ''}${srcPill({src:ok ? 'gemini' : 'modelo'})}`);
+  }
+  async function webSearch(body, q){
+    await think(body, [['Pesquisando na internet', 'IA'], ['Separando as fontes', 'Sistema']]);
+    const d = await aiCall('web', {pergunta:q});
+    if (!d || d.rejected || !d.texto){
+      add(body, `<p class="say">Não consegui pesquisar na internet agora. ${aiOn === false || location.protocol === 'file:' ? 'A busca precisa do Gemini configurado no servidor do ELO.' : 'Tente de novo em alguns instantes.'}</p>`);
+      return;
+    }
+    add(body, `<p class="say">${para(d.texto)}</p>${d.fontes?.length ? `<div class="srcs"><b>Fontes</b>${d.fontes.slice(0, 5).map(f => `<a href="${esc(f.uri)}" target="_blank" rel="noopener">${esc(f.title || f.uri)}</a>`).join('')}</div>` : ''}<span class="src-pill src-pill--web">Fonte externa: internet, via Gemini com Google Search. Confira as fontes.</span>`);
+  }
+  function webAction(b, runner){
+    const act = b.dataset.act; if (act !== 'web' && act !== 'noweb') return false;
+    const q = pendingWeb; b.closest('[data-webask]').remove(); pendingWeb = null;
+    if (act === 'web') runner('Pode pesquisar', x => webSearch(x, q));
+    else runner('Agora não', async x => add(x, '<p class="say">Tudo bem. Se quiser, pergunte de outro jeito ou peça algo dos dados do CITi.</p>'));
+    return true;
+  }
+  function looksMetric(text){
+    const t = norm(text);
+    if (/^(o que|oq|oque|qual a diferenca|como|por que|pq|explica|me explica)\b/.test(t)) return false;
+    const p = parse(text);
+    return !!p.m && (p.f.length > 0 || p.unk.length > 0 || /taxa|percentual|%|quantos|quantas/.test(t));
+  }
+
   // ---------- sugestões e entrada ----------
   let sugOpen = true; try { sugOpen = localStorage.getItem('elo.sugs') !== '0'; } catch (e) {}
   function applySugs(){ $('sugs').classList.toggle('is-closed', !sugOpen); $('sugsToggle').setAttribute('aria-expanded', String(sugOpen)); }
   $('sugsToggle').addEventListener('click', () => { sugOpen = !sugOpen; applySugs(); try { localStorage.setItem('elo.sugs', sugOpen ? '1' : '0'); } catch (e) {} });
   applySugs();
+  const S_GEN = () => [['O que é um lead quente?', 'q'], ['Como funciona o Prospect Day?', 'q'], ['Como o ICP é gerado?', 'q'], ['Onde o nosso funil perde mais?', 'q'], ['Me traga leads', 'bring'], ['Qual o tamanho do mercado de supermercados em Pernambuco?', 'q']];
   const S_PRO = () => [['Me traga leads', 'bring'], ['Avaliar Grupo Maré Alta', 'ev'], ['Avaliar Padarias Trigo Dourado', 'ev'], ['Avaliar Hospital Dia Boa Esperança', 'ev'], ['Avaliar Cerâmica Pedra Lisa', 'ev'], ['Avaliar uma empresa nova', 'new']];
   const S_ICP = () => [
     ['Ver ICP vigente', 'cur'], ['Gerar novo ICP', 'gen'], ['Dados que alimentam o ICP', 'data'], ['Histórico de versões', 'ver'],
@@ -3587,7 +3699,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     ['Testar a checagem anti-alucinação', 'test']
   ];
   function renderSugs(){
-    const s = mode === 'icp' ? S_ICP() : mode === 'prospeccao' ? S_PRO() : [];
+    const s = mode === 'icp' ? S_ICP() : mode === 'prospeccao' ? S_PRO() : S_GEN();
     const list = s.filter(([, k]) => k !== 'test' || me().dir).map(([t, k]) => {
       const locked = (k === 'gen') && !me().dir;
       return `<button class="sug ${locked ? 'sug--locked' : ''} ${k === 'test' ? 'sug--test' : ''}" type="button" data-sug="${k}" data-text="${esc(t)}">${locked ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>' : ''}${esc(t)}</button>`;
@@ -3596,20 +3708,23 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     $('sugsWrap').classList.toggle('is-empty', !list.length);
   }
   function route(text){
-    const t = text.toLowerCase();
-    if (mode !== 'icp' && mode !== 'prospeccao') setMode('icp', true);
-    if (mode === 'prospeccao') return prospectRoute(text);
-    if (/gerar|novo icp|recalcul/.test(t)) return run(text, b => generate(b));
-    if (/hist[oó]rico|vers[oõ]/.test(t)) return run(text, showVersions);
-    if (/dados|aliment|base/.test(t) && !/taxa|convers|avan|fech/.test(t)) return run(text, showData);
-    if (/vigente|atual|mostrar icp|ver icp|^icp$/.test(t)) return run(text, showCurrent);
-    return run(text, b => metric(b, text));
+    const t = norm(text);
+    if (/\b(traga|sugira|encontre|busque|indique)\b.*\bleads?\b|^(novos )?leads?$|quais leads (ligar|contatar)/.test(t)) return run(text, bring);
+    if (findDir(text)) return run(text, b => evaluate(b, text));
+    if (/^(avaliar|avalie|analisar|analise|dossie de|dossie da|dossie do)\s+\S/.test(t)) return run(text, b => evaluate(b, text));
+    if (/\b(gerar|gere|gera|recalcular|recalcule)\b.*\bicp\b|\bnovo icp\b/.test(t) && !/como/.test(t)) return run(text, b => generate(b));
+    if (/(historico|versoes).*icp|icp.*(historico|versoes)/.test(t)) return run(text, showVersions);
+    if (/^(ver|mostrar|mostre|qual (e|eh) o) (o )?icp( vigente| atual)?\??$|^icp( vigente| atual)?\??$/.test(t)) return run(text, showCurrent);
+    if (/dados que alimentam|o que alimenta o icp/.test(t)) return run(text, showData);
+    if (looksMetric(text)) return run(text, b => metric(b, text));
+    return run(text, b => converse(b, text));
   }
   $('sugs').addEventListener('click', e => {
     const b = e.target.closest('[data-sug]'); if (!b || busy) return;
     const k = b.dataset.sug, t = b.dataset.text;
     if (k === 'toicp') return setMode('icp');
     if (k === 'bring') return run(t, bring);
+    if (k === 'q') return route(t);
     if (k === 'ev') return run(t, b2 => evaluate(b2, t.replace('Avaliar ', '')));
     if (k === 'new'){ ta.placeholder = 'Digite o nome da empresa…'; ta.focus(); return; }
     if (k === 'cur') return run(t, showCurrent);
@@ -3623,6 +3738,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     const b = e.target.closest('button'); if (!b || busy) return;
     if (b.dataset.measure){ const q = pendingMetric; b.parentElement.remove(); return run(b.textContent, b2 => metric(b2, q, b.dataset.measure)); }
     const act = b.dataset.act; if (!act) return;
+    if (webAction(b, run)) return;
     if (['approve','discard','edit','editdone'].includes(act)) return draftAction(act, b);
     if (act === 'mconfirm'){ b.closest('[data-confirm]').remove(); return run('Confirmar e calcular', metricCalc); }
     if (act === 'mcancel'){ b.closest('[data-confirm]').remove(); pendingMetric = null; $('askIn').focus(); return; }
@@ -3637,7 +3753,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
   function setMode(m, silent){
     mode = m;
     document.querySelectorAll('.mode').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.mode === m)));
-    ta.placeholder = m === 'icp' ? 'Peça uma métrica ou pergunte sobre o ICP…' : 'Informe uma empresa para avaliar…';
+    ta.placeholder = m === 'icp' ? 'Pergunte sobre o ICP, peça uma métrica ou tire uma dúvida…' : 'Diga uma empresa para avaliar ou tire uma dúvida…';
     renderSugs();
     if (!silent) run(null, m === 'icp' ? showCurrent : prospectIntro);
   }
@@ -3645,7 +3761,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
 
   window.ELO = Object.assign(window.ELO || {}, {prospect(name){ setMode('prospeccao', true); setTimeout(() => run(`Abrir dossiê de ${name}`, b => evaluate(b, name)), 80); }, aiEnter(){
     const u = me();
-    $('aiHello').innerHTML = `Olá, ${esc(u.name)}. Escolha um modo abaixo. No ICP, eu interpreto os resultados do funil; o cálculo é sempre feito pelo sistema, nunca por mim.`;
+    $('aiHello').innerHTML = `Olá, ${esc(u.name)}. Pergunte o que quiser: conceitos do Comercial, como usar o ELO, dados do funil, uma empresa ou uma métrica. Se a resposta não estiver na base do CITi, eu peço para pesquisar na internet.`;
     renderSugs();
   }});
 })();
