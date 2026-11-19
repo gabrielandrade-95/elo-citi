@@ -2615,7 +2615,8 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     await think(body, [
       [`Agrupando ${s.all.n} leads por porte, unidades, fundação e região`, 'Código'],
       ['Calculando taxa de avanço e de boa entrega de cada grupo', 'Código'],
-      ['Interpretando os números e propondo o novo ICP', 'IA'],
+      ['Montando a proposta pelas regras de corte', 'Código'],
+      ['Escrevendo o resumo da proposta', 'IA'],
       ['Conferindo cada número citado contra o cálculo', 'Código']
     ]);
     const p = s.prop, pb = s.porte, best = pb[2], mid = pb[3];
@@ -2717,7 +2718,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
 
   async function metric(body, q, measureOverride, D = DB, HAS = null){
     const p = parse(q); if (measureOverride) p.m = measureOverride;
-    await think(body, [['Traduzindo o pedido para uma definição estruturada', 'IA'], ['Validando colunas, tipos e tamanho da amostra', 'Código']]);
+    await think(body, [['Traduzindo o pedido em filtros e uma medida', 'Código'], ['Validando colunas, tipos e tamanho da amostra', 'Código']]);
     const lack = HAS ? [...new Set(p.f.map(x => x.col).concat(p.m === 'entrega' ? ['entrega'] : []))].filter(c => !HAS.has(c)) : [];
     if (!p.unk.length && lack.length){
       add(body, `<div class="verdict verdict--no"><span class="verdict__i">×</span><div><b>Não posso entregar essa métrica</b>A base atual não tem a coluna ${lack.map(c => `"${FIELDS[c]}"`).join(' nem ')}. Para a métrica existir, essa coluna precisa estar na planilha. Não vou estimar.</div></div>`);
