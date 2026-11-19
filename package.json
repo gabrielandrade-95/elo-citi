@@ -1,0 +1,12 @@
+{
+  "name": "elo-citi",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ELO — Estratégia, Leads e Oportunidades. Plataforma do Comercial do CITi.",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "vercel dev",
+    "test": "node --test tests/*.test.js"
+  }
+}
