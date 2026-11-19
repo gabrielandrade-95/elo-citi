@@ -20,10 +20,3 @@ test('descarta texto com número inventado', async () => {
 test('unknownNumbers ignora números presentes na entrada', () => {
   assert.deepEqual(unknownNumbers({t: '12 de 30'}, {n: 30, a: 12}), []);
 });
-
-test('busca na web devolve texto e fontes, sem checar números', async () => {
-  const fake = async () => new Response(JSON.stringify({candidates: [{content: {parts: [{text: 'O setor cresceu 12% em 2025.'}]}, groundingMetadata: {groundingChunks: [{web: {uri: 'https://exemplo.com', title: 'exemplo.com'}}]}}]}));
-  const out = await runTask('web', {pergunta: 'crescimento do varejo em PE'}, {key: 'x', model: 'm', fetchImpl: fake});
-  assert.equal(out.ok, true);
-  assert.equal(out.data.fontes.length, 1);
-});

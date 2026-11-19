@@ -1051,11 +1051,6 @@ details.pd-cold summary::-webkit-details-marker{display:none}
 .pf-res.is-closed{padding-top:12px;padding-bottom:12px}
 .pf-res.is-closed .pf-res__body{grid-template-rows:0fr;opacity:0}
 .fonte{margin:-6px 0 0;font-size:12.5px;color:var(--muted)}
-.srcs{display:grid;gap:6px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.03);font-size:13px}
-.srcs b{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
-.srcs a{color:#9fc2ff;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.srcs a:hover{text-decoration:underline}
-.src-pill--web{background:rgba(106,76,240,.16);color:#c2b4ff}
 </style>
 </head>
 <body>
@@ -2494,15 +2489,15 @@ details.pd-cold summary::-webkit-details-marker{display:none}
   async function aiCall(task, input){
     if (aiOn === false || location.protocol === 'file:') return null;
     try {
-      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), task === 'web' ? 28000 : 15000);
+      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 15000);
       const r = await fetch('/api/ai', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({task, input}), signal:ctl.signal});
       clearTimeout(t);
-      if (r.status === 404 || r.status === 503 || r.status === 405) { aiOn = false; return null; }
+      if (r.status === 404 || r.status === 503 || r.status === 405 || r.status === 504) { aiOn = false; return null; }
       const j = await r.json().catch(() => null);
       if (!j) return null;
       aiOn = true;
       return j.ok ? j.data : {rejected:true, bad:j.bad || [], reason:j.reason || ''};
-    } catch (e) { return e.name === 'AbortError' ? {rejected:true, reason:'a pesquisa demorou mais que o limite de espera'} : null; }
+    } catch (e) { if (e.name === 'AbortError') aiOn = false; return null; }
   }
   const strip = h => String(h).replace(/<[^>]+>/g, '');
   const rich = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
@@ -3328,7 +3323,6 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     const b = e.target.closest('button'); if (!b || aBusy) return;
     if (b.dataset.measure){ const q = pendingMetric; b.parentElement.remove(); return aRun(b.textContent, x => metric(x, q, b.dataset.measure, rowsFor(), DS.has)); }
     const act = b.dataset.act;
-    if (webAction(b, aRun)) return;
     if (act === 'mconfirm'){ b.closest('[data-confirm]').remove(); return aRun('Confirmar e calcular', metricCalc); }
     if (act === 'mcancel'){ b.closest('[data-confirm]').remove(); pendingMetric = null; $('anIn2').focus(); return; }
     if (act === 'msave'){ pinMetric(lastMetric); b.disabled = true; b.textContent = 'Fixada no painel'; return; }
@@ -3593,7 +3587,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
   }
   window.ELO = Object.assign(window.ELO || {}, {homeEnter:renderHome});
 
-  // ---------- guia: glossário, conversa livre e busca na internet ----------
+  // ---------- guia: glossário e conversa livre ----------
   const TR = 'Treinamento Comercial do CITi (PS 2026.2)';
   const GLOSS = [
     {n:'Lead quente', k:['lead quente','leads quentes'], f:TR + ' + ELO', t:'Lead quente é a empresa que cumpre o ICP e tem um motivo real para conversar agora, como um gatilho recente, acesso a quem decide ou uma indicação. No ELO, "quente" sai da combinação de quatro dimensões: Fit, Momento, Acesso e Histórico.'},
@@ -3628,7 +3622,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     if (w) return {tipo:'resposta', texto:w.t, fonte:w.f};
     if (g) return {tipo:'resposta', texto:g.t, fonte:'Guia do ELO'};
     if (/^\s*(oi|ola|bom dia|boa tarde|boa noite|e ai)\b/.test(t)) return {tipo:'resposta', texto:`Oi, ${me().name}! Posso explicar conceitos do Comercial, mostrar como usar o ELO, responder com os dados do funil, avaliar uma empresa ou calcular uma métrica. O que você precisa?`, fonte:''};
-    return {tipo:'fora_da_base', texto:'Essa pergunta eu não consigo responder com a base de dados do CITi. Posso pesquisar na internet?', busca:text};
+    return {tipo:'fora_da_base'};
   }
   function baseContext(){
     const m = compute(DB), pl = pipeLeads(), c = ICP.cur;
@@ -3646,38 +3640,16 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     };
   }
   const HIST = [];
-  let pendingWeb = null;
   const para = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n+/g, '<br>');
-  const webBtns = `<div class="acts" data-webask><button class="btn btn--primary" type="button" data-act="web"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>Sim, pesquisar na internet</button><button class="btn" type="button" data-act="noweb">Agora não</button></div>`;
   async function converse(body, text){
     await think(body, [['Procurando na base do CITi e no guia do ELO', 'Sistema'], ['Entendendo a pergunta', 'IA']]);
     const d = await aiCall('conversa', {mensagem:text, modo:mode || 'geral', perfil:me().role, historico:HIST.slice(-6), base:baseContext()});
-    const ok = d && !d.rejected && d.texto && d.tipo;
+    const ok = d && !d.rejected && d.tipo && (d.texto || d.tipo === 'fora_da_base');
     const r = ok ? d : localAnswer(text);
-    HIST.push({quem:'usuario', texto:text}, {quem:'citi.ai', texto:r.texto});
+    HIST.push({quem:'usuario', texto:text}, {quem:'citi.ai', texto:r.tipo === 'fora_da_base' ? 'fora da base' : r.texto});
     if (r.tipo === 'metrica' && r.consulta) { add(body, `<p class="say">${para(r.texto)}</p>`); return metric(body, r.consulta, null, body.closest('.an-thread') ? rowsFor() : DB, body.closest('.an-thread') ? DS.has : null); }
-    if (r.tipo === 'fora_da_base'){
-      pendingWeb = r.busca || text;
-      add(body, `<p class="say">${para(r.texto)}</p>${webBtns}`);
-      return;
-    }
+    if (r.tipo === 'fora_da_base') return add(body, `<p class="say">Essa pergunta eu não consigo responder com a base de dados do CITi. Nesta versão do ELO, eu não faço pesquisa online, então só respondo com o que está na base do CITi e no guia do ELO.</p><p class="fonte">Experimente perguntar sobre um conceito do Comercial, uma tela do ELO, os dados do funil ou uma empresa da base.</p>`);
     add(body, `<p class="say">${para(r.texto)}</p>${r.fonte ? `<p class="fonte">Fonte: ${esc(r.fonte)}</p>` : ''}${srcPill({src:ok ? 'gemini' : 'modelo'})}`);
-  }
-  async function webSearch(body, q){
-    await think(body, [['Pesquisando na internet', 'IA'], ['Separando as fontes', 'Sistema']]);
-    const d = await aiCall('web', {pergunta:q});
-    if (!d || d.rejected || !d.texto){
-      add(body, `<p class="say">Não consegui pesquisar na internet agora. ${aiOn === false || location.protocol === 'file:' ? 'A busca precisa do Gemini configurado no servidor do ELO.' : /429|quota|RESOURCE_EXHAUSTED/i.test(d?.reason || '') ? 'O limite gratuito do Gemini foi atingido; tente de novo em alguns minutos.' : 'Tente de novo em alguns instantes.'}</p>${d?.reason ? `<p class="fonte">Detalhe técnico: ${esc(d.reason)}</p>` : ''}`);
-      return;
-    }
-    add(body, `<p class="say">${para(d.texto)}</p>${d.fontes?.length ? `<div class="srcs"><b>Fontes</b>${d.fontes.slice(0, 5).map(f => `<a href="${esc(f.uri)}" target="_blank" rel="noopener">${esc(f.title || f.uri)}</a>`).join('')}</div>` : ''}<span class="src-pill src-pill--web">Fonte externa: internet, via Gemini com Google Search. Confira as fontes.</span>`);
-  }
-  function webAction(b, runner){
-    const act = b.dataset.act; if (act !== 'web' && act !== 'noweb') return false;
-    const q = pendingWeb; b.closest('[data-webask]').remove(); pendingWeb = null;
-    if (act === 'web') runner('Pode pesquisar', x => webSearch(x, q));
-    else runner('Agora não', async x => add(x, '<p class="say">Tudo bem. Se quiser, pergunte de outro jeito ou peça algo dos dados do CITi.</p>'));
-    return true;
   }
   function looksMetric(text){
     const t = norm(text);
@@ -3738,7 +3710,6 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     const b = e.target.closest('button'); if (!b || busy) return;
     if (b.dataset.measure){ const q = pendingMetric; b.parentElement.remove(); return run(b.textContent, b2 => metric(b2, q, b.dataset.measure)); }
     const act = b.dataset.act; if (!act) return;
-    if (webAction(b, run)) return;
     if (['approve','discard','edit','editdone'].includes(act)) return draftAction(act, b);
     if (act === 'mconfirm'){ b.closest('[data-confirm]').remove(); return run('Confirmar e calcular', metricCalc); }
     if (act === 'mcancel'){ b.closest('[data-confirm]').remove(); pendingMetric = null; $('askIn').focus(); return; }
@@ -3761,7 +3732,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
 
   window.ELO = Object.assign(window.ELO || {}, {prospect(name){ setMode('prospeccao', true); setTimeout(() => run(`Abrir dossiê de ${name}`, b => evaluate(b, name)), 80); }, aiEnter(){
     const u = me();
-    $('aiHello').innerHTML = `Olá, ${esc(u.name)}. Pergunte o que quiser: conceitos do Comercial, como usar o ELO, dados do funil, uma empresa ou uma métrica. Se a resposta não estiver na base do CITi, eu peço para pesquisar na internet.`;
+    $('aiHello').innerHTML = `Olá, ${esc(u.name)}. Pergunte o que quiser: conceitos do Comercial, como usar o ELO, dados do funil, uma empresa ou uma métrica. Eu respondo só com a base do CITi: nesta versão, não faço pesquisa online.`;
     renderSugs();
   }});
 })();

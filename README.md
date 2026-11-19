@@ -30,12 +30,12 @@ O sistema calcula e a IA interpreta. Toda conta é feita em código, e o Gemini 
 - **Checagem dupla de números.** O servidor e o navegador conferem se cada número que o Gemini escreveu existe nos dados enviados. Se algum não existir, o texto é descartado e a tela mostra a versão padrão com um aviso.
 - **Veredito antes de calcular.** Para uma métrica personalizada, o agente diz se pode entregar, se pode entregar com ressalvas (amostra pequena ou dado aproximado) ou se não pode (coluna inexistente), e pede confirmação antes de calcular.
 - **Uma pessoa sempre decide.** A IA propõe o ICP, mas só a Diretoria publica. O agente recomenda contatar ou não, mas quem liga é sempre uma pessoa.
-- **Modo demonstração.** Sem chave configurada, ou se a cota do Gemini acabar, o ELO usa textos padrão montados a partir dos mesmos números. A demonstração nunca para.
+- **Modo demonstração.** Sem chave configurada, se a cota do Gemini acabar ou se ele demorar demais, o ELO usa textos padrão montados a partir dos mesmos números. Depois de uma demora, ele para de chamar o Gemini até a página ser recarregada, para ninguém esperar de novo. A demonstração nunca para.
 
 Onde o Gemini entra: conversa livre com o CITi.AI, leitura das análises, resumo da proposta de ICP, abertura da ligação e perguntas SPIN do dossiê.
 
 - **Conversa livre.** O CITi.AI responde dúvidas sobre conceitos do Comercial, usando um glossário tirado do treinamento comercial, sobre como usar o ELO e sobre os dados do funil. Pedidos de ação, como avaliar uma empresa, gerar o ICP ou calcular uma métrica, abrem o fluxo certo.
-- **Fora da base, com permissão.** Quando a resposta não está nos dados do CITi, o agente avisa e pergunta se pode pesquisar na internet. Só depois do "sim" ele busca, com o Gemini e o Google Search, e mostra as fontes.
+- **Fora da base, sem inventar.** Quando a resposta não está nos dados do CITi, no glossário ou no guia do ELO, o agente avisa que nesta versão não faz pesquisa online. Ele não completa a resposta com conhecimento geral do modelo.
 
 ## Estrutura
 
@@ -56,7 +56,7 @@ tests/              testes da checagem de números
 
 1. Importe o repositório em vercel.com (*Add New › Project*). Não precisa configurar framework nem build.
 2. Em *Settings › Environment Variables*, crie `GEMINI_API_KEY` com a chave do Google AI Studio. `GEMINI_MODEL` é opcional (padrão: `gemini-3.8-flash`).
-3. Faça o deploy. Em `/api/health`, o campo `"ia": true` confirma que a chave foi lida.
+3. Faça o deploy. Em `/api/health`, o campo `"ia": true` confirma que a chave foi lida. `/api/health?teste=texto` faz uma chamada real e mostra o tempo de resposta, e `/api/health?teste=modelos` lista os modelos que a chave pode usar. `GEMINI_MODEL` aceita vários modelos separados por vírgula: se um recusar por cota, o próximo é tentado.
 
 A chave fica só no servidor e nunca chega ao navegador.
 
@@ -69,4 +69,5 @@ A chave fica só no servidor e nunca chega ao navegador.
 - Os dados ficam no navegador de quem usa (localStorage). Em produção, iriam para um banco compartilhado pelo time.
 - O login é um seletor de perfil. Em produção, seria autenticação com as contas do CITi.
 - A tradução de pedidos de métrica em linguagem natural é feita por regras. O próximo passo é passar essa tradução para o Gemini, com a mesma validação em código.
-- A busca de gatilhos usa uma base própria. A busca na web depende de uma API que permita isso.
+- **Pesquisa online é o próximo objetivo.** A ideia é o agente perguntar "posso pesquisar na internet?" quando a resposta não estiver na base, e só pesquisar depois do sim, mostrando as fontes. Testamos isso com o Gemini e a pesquisa do Google, mas o plano gratuito da API recusou a chamada por cota (erro 429). Por isso, nesta versão, o agente só avisa que não faz pesquisa online.
+- Empresas, gatilhos e histórico do funil vêm de uma base fictícia dentro do próprio ELO. Em produção, os gatilhos viriam de fontes públicas (notícias, Receita Federal, LinkedIn) e o histórico, do funil real do Comercial.
