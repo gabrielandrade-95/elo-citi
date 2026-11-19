@@ -2619,7 +2619,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
       ['Conferindo cada número citado contra o cálculo', 'Código']
     ]);
     const p = s.prop, pb = s.porte, best = pb[2], mid = pb[3];
-    const next = {...cur, v:ICP.versions.length + 1, pMin:p.pMin, pMax:p.pMax, minFil:p.minFil, anti:[...cur.anti], base:`${s.all.n} leads do pipeline`};
+    const next = {...cur, v:ICP.versions.length + 1, pMin:p.pMin, pMax:p.pMax, minFil:p.minFil, anti:[...cur.anti], base:`${s.all.n} leads do histórico do funil`};
     const covered = ['Sem decisor','Sem orçamento','Só quer mão de obra por hora','Operação pequena demais','Não respondeu','Agora não'];
     const topMot = s.motivos.filter(([m]) => !covered.includes(m))[0];
     if (topMot && topMot[1] >= 5) next.anti.push(topMot[0]);
@@ -2635,7 +2635,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     const chk = verify(claims.map(c => c.t), allowed);
     draft = {next, cur:structuredClone(cur)};
     const head = `<div class="panel-ai__head"><span class="vtag vtag--new">v${next.v}</span><h3>Proposta de novo ICP</h3><span class="meta meta--r">compara com a v${cur.v}</span></div>`;
-    const lead0 = `Recalculei o ICP com <b>${s.all.n} leads</b> do pipeline. A proposta muda ${[p.pMin !== cur.pMin, p.minFil !== cur.minFil, next.anti.length > cur.anti.length].filter(Boolean).length} pontos; o resto se manteve. Cada afirmação cita o número e o tamanho da amostra.`;
+    const lead0 = `Recalculei o ICP com <b>${s.all.n} leads</b> do histórico do funil. A proposta muda ${[p.pMin !== cur.pMin, p.minFil !== cur.minFil, next.anti.length > cur.anti.length].filter(Boolean).length} pontos; o resto se manteve. Cada afirmação cita o número e o tamanho da amostra.`;
     const lead = chk.bad.length ? {text:lead0, src:'modelo'} : await aiText('icp', {vigente:cur, proposta:next, afirmacoes:claims.map(c => strip(c.t)), resumo_padrao:strip(lead0)}, lead0, allowed);
     if (chk.bad.length){
       add(body, `<div class="verify verify--bad">${badSvg}<span><b>Texto da IA descartado.</b> ${chk.bad.length} número citado (${chk.bad.join(', ')}) não existe no resultado calculado. Mostro só os números calculados pelo sistema.</span></div>
@@ -3039,7 +3039,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     l.valor = l.etapa >= 3 ? Math.round((25 + R2() * 95) / 5) * 5 : null;
   });
   const FIELDS = {empresa:'Empresa', setor:'Setor', uf:'UF', porte:'Faturamento (R$ mi)', filiais:'Unidades', fund:'Ano de fundação', familiar:'Empresa familiar', origem:'Origem do lead', gatilho:'Gatilho', decisor:'Chegou ao decisor', etapa:'Etapa máxima', motivo:'Motivo de perda', valor:'Valor da proposta (R$ mil)', mes:'Data do 1º contato', resp:'Responsável', entrega:'Qualidade da entrega', dias:'Data de cada etapa'};
-  const ELO_DS = {name:'Dados do ELO', sub:`pipeline + histórico · ${DB.length} leads`, rows:DB, has:new Set(Object.keys(FIELDS))};
+  const ELO_DS = {name:'Dados do ELO', sub:`histórico do funil · ${DB.length} leads`, rows:DB, has:new Set(Object.keys(FIELDS))};
   let DS = ELO_DS;
   const META = 600, STAGECOL = ['#4d8ef7','#4a9fe4','#48b2cc','#4ac4aa','#4dd38d','#50e078'];
   const uid = () => window.ELO?.user || 'ma';
