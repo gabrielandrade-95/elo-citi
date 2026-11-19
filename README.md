@@ -55,7 +55,7 @@ tests/              testes da checagem de números
 **Com o Gemini, na Vercel:**
 
 1. Importe o repositório em vercel.com (*Add New › Project*). Não precisa configurar framework nem build.
-2. Em *Settings › Environment Variables*, crie `GEMINI_API_KEY` com a chave do Google AI Studio. `GEMINI_MODEL` é opcional (padrão: `gemini-2.5-flash`).
+2. Em *Settings › Environment Variables*, crie `GEMINI_API_KEY` com a chave do Google AI Studio. `GEMINI_MODEL` é opcional (padrão: `gemini-3.8-flash`).
 3. Faça o deploy. Em `/api/health`, o campo `"ia": true` confirma que a chave foi lida.
 
 A chave fica só no servidor e nunca chega ao navegador.

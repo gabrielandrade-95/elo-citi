@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   if (JSON.stringify(body).length > MAX_BODY) return res.status(413).json({ok: false, reason: 'grande_demais'});
 
   try {
-    const out = await runTask(body.task, body.input || {}, {key, model: process.env.GEMINI_MODEL || 'gemini-2.5-flash'});
+    const out = await runTask(body.task, body.input || {}, {key, model: process.env.GEMINI_MODEL || 'gemini-3.8-flash'});
     return res.status(200).json(out);
   } catch (err) {
     return res.status(err.status || 500).json({ok: false, reason: err.message});

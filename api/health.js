@@ -2,7 +2,7 @@ import {runTask} from '../lib/gemini.js';
 
 export default async function handler(req, res) {
   const key = process.env.GEMINI_API_KEY;
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
   const out = {ok: true, ia: Boolean(key), modelo: model};
   const teste = req.query?.teste;
   if (key && (teste === 'texto' || teste === 'web')) {
