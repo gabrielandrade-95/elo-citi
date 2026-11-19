@@ -25,14 +25,14 @@ Plataforma do Comercial do CITi para decidir **quem contatar, quando e com que a
 
 ## Como a IA é usada
 
-O sistema calcula e a IA interpreta. Toda conta é feita em código, e o Gemini recebe só os números já calculados.
+O sistema calcula e a IA interpreta. Toda conta é feita em código, e a IA recebe só os números já calculados. O Groq responde primeiro; se ele falhar ou bater no limite, o Gemini Flash-Lite assume.
 
-- **Checagem dupla de números.** O servidor e o navegador conferem se cada número que o Gemini escreveu existe nos dados enviados. Se algum não existir, o texto é descartado e a tela mostra a versão padrão com um aviso.
+- **Checagem dupla de números.** O servidor e o navegador conferem se cada número que a IA escreveu existe nos dados enviados. Se algum não existir, o texto é descartado e a tela mostra a versão padrão com um aviso.
 - **Veredito antes de calcular.** Para uma métrica personalizada, o agente diz se pode entregar, se pode entregar com ressalvas (amostra pequena ou dado aproximado) ou se não pode (coluna inexistente), e pede confirmação antes de calcular.
 - **Uma pessoa sempre decide.** A IA propõe o ICP, mas só a Diretoria publica. O agente recomenda contatar ou não, mas quem liga é sempre uma pessoa.
-- **Modo demonstração.** Sem chave configurada, se a cota do Gemini acabar ou se ele demorar demais, o ELO usa textos padrão montados a partir dos mesmos números. Depois de uma demora, ele para de chamar o Gemini até a página ser recarregada, para ninguém esperar de novo. A demonstração nunca para.
+- **Modo demonstração.** Sem chave configurada, se as cotas acabarem ou se a IA demorar demais, o ELO usa textos padrão montados a partir dos mesmos números. Depois de uma demora, o ELO para de chamar o Gemini até a página ser recarregada, para ninguém esperar de novo. A demonstração nunca para.
 
-Onde o Gemini entra: conversa livre com o CITi.AI, leitura das análises, resumo da proposta de ICP, abertura da ligação e perguntas SPIN do dossiê.
+Onde a IA entra: conversa livre com o CITi.AI, leitura das análises, resumo da proposta de ICP, abertura da ligação e perguntas SPIN do dossiê.
 
 - **Conversa livre.** O CITi.AI responde dúvidas sobre conceitos do Comercial, usando um glossário tirado do treinamento comercial, sobre como usar o ELO e sobre os dados do funil. Pedidos de ação, como avaliar uma empresa, gerar o ICP ou calcular uma métrica, abrem o fluxo certo.
 - **Fora da base, sem inventar.** Quando a resposta não está nos dados do CITi, no glossário ou no guia do ELO, o agente avisa que nesta versão não faz pesquisa online. Ele não completa a resposta com conhecimento geral do modelo.
@@ -42,9 +42,9 @@ Onde o Gemini entra: conversa livre com o CITi.AI, leitura das análises, resumo
 ```
 index.html          interface completa (HTML, CSS e JS)
 assets/             logo e elementos visuais dos slides do CITi
-api/ai.js           rota que chama o Gemini (POST /api/ai)
+api/ai.js           rota que chama a IA (POST /api/ai)
 api/health.js       status da integração (GET /api/health)
-lib/gemini.js       prompts, chamada ao Gemini e checagem de números
+lib/ia.js           prompts, chamada ao Groq e ao Gemini e checagem de números
 tests/              testes da checagem de números
 ```
 
@@ -52,15 +52,15 @@ tests/              testes da checagem de números
 
 **Só a interface:** abra o `index.html` no navegador. Ela funciona no modo demonstração.
 
-**Com o Gemini, na Vercel:**
+**Com a IA, na Vercel:**
 
 1. Importe o repositório em vercel.com (*Add New › Project*). Não precisa configurar framework nem build.
-2. Em *Settings › Environment Variables*, crie `GEMINI_API_KEY` com a chave do Google AI Studio. `GEMINI_MODEL` é opcional (padrão: `gemini-3.8-flash`).
-3. Faça o deploy. Em `/api/health`, o campo `"ia": true` confirma que a chave foi lida. `/api/health?teste=texto` faz uma chamada real e mostra o tempo de resposta, e `/api/health?teste=modelos` lista os modelos que a chave pode usar. `GEMINI_MODEL` aceita vários modelos separados por vírgula: se um recusar por cota, o próximo é tentado.
+2. Em *Settings › Environment Variables*, crie `GROQ_API_KEY` (chave grátis em console.groq.com) e, como reserva, `GEMINI_API_KEY` (Google AI Studio). `GROQ_MODEL` e `GEMINI_MODEL` são opcionais: os padrões são `openai/gpt-oss-120b,llama-3.3-70b-versatile` e `gemini-3.5-flash-lite,gemini-3.1-flash-lite`.
+3. Faça o deploy. Em `/api/health`, o campo `"ia": true` confirma que a chave foi lida. `/api/health?teste=texto` faz uma chamada real e mostra quem respondeu e em quanto tempo, e `/api/health?teste=modelos` lista os modelos que a chave do Gemini pode usar. A ordem de tentativa aparece no campo `ordem`.
 
 A chave fica só no servidor e nunca chega ao navegador.
 
-**Localmente, com o Gemini:** copie `.env.example` para `.env`, preencha a chave e rode `npx vercel dev`.
+**Localmente, com a IA:** copie `.env.example` para `.env`, preencha as chaves e rode `npx vercel dev`.
 
 **Testes:** `npm test`.
 
@@ -68,6 +68,6 @@ A chave fica só no servidor e nunca chega ao navegador.
 
 - Os dados ficam no navegador de quem usa (localStorage). Em produção, iriam para um banco compartilhado pelo time.
 - O login é um seletor de perfil. Em produção, seria autenticação com as contas do CITi.
-- A tradução de pedidos de métrica em linguagem natural é feita por regras. O próximo passo é passar essa tradução para o Gemini, com a mesma validação em código.
+- A tradução de pedidos de métrica em linguagem natural é feita por regras. O próximo passo é passar essa tradução para a IA, com a mesma validação em código.
 - **Pesquisa online é o próximo objetivo.** A ideia é o agente perguntar "posso pesquisar na internet?" quando a resposta não estiver na base, e só pesquisar depois do sim, mostrando as fontes. Testamos isso com o Gemini e a pesquisa do Google, mas o plano gratuito da API recusou a chamada por cota (erro 429). Por isso, nesta versão, o agente só avisa que não faz pesquisa online.
 - Empresas, gatilhos e histórico do funil vêm de uma base fictícia dentro do próprio ELO. Em produção, os gatilhos viriam de fontes públicas (notícias, Receita Federal, LinkedIn) e o histórico, do funil real do Comercial.

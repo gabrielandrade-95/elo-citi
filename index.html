@@ -1042,7 +1042,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
 
 .src-pill{justify-self:start;display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.06);color:var(--muted);margin-top:-4px}
 .src-pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
-.src-pill--gemini{background:rgba(77,142,247,.14);color:#9fc2ff}
+.src-pill--ia{background:rgba(77,142,247,.14);color:#9fc2ff}
 .src-pill--descartado{background:rgba(242,193,75,.12);color:#f2c14b}
 .panel-ai .src-pill{margin-top:10px}
 
@@ -1397,7 +1397,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
           <span><b>ICP</b><small>Perfil de cliente ideal vivo</small></span>
         </button>
       </div>
-      <p class="demo-note">Dados fictícios. Com a chave configurada, a interpretação vem do Gemini; sem ela, o ELO usa a leitura padrão.</p>
+      <p class="demo-note">Dados fictícios. Com a IA configurada, o texto vem do Groq ou do Gemini; sem ela, o ELO usa a leitura padrão.</p>
     </div>
   </div>
 </main>
@@ -2489,7 +2489,8 @@ details.pd-cold summary::-webkit-details-marker{display:none}
   const badSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff8a78" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.5"/></svg>';
 
 
-  // ---------- ponte com o Gemini (rota /api/ai na Vercel) ----------
+  // ---------- ponte com a IA (rota /api/ai na Vercel: Groq primeiro, Gemini de reserva) ----------
+  let lastProv = 'Groq';
   let aiOn = null;
   const AI_CACHE = {};
   let aiHost = null;
@@ -2518,7 +2519,8 @@ details.pd-cold summary::-webkit-details-marker{display:none}
       const j = await r.json().catch(() => null);
       if (!j) return null;
       aiOn = true;
-      return j.ok ? j.data : {rejected:true, bad:j.bad || [], reason:j.reason || ''};
+      if (j.ok) { lastProv = j.provedor === 'gemini' ? 'Gemini' : 'Groq'; return j.data; }
+      return {rejected:true, bad:j.bad || [], reason:j.reason || ''};
     } catch (e) { if (e.name === 'AbortError') aiOn = false; return null; }
     finally { done(); }
   }
@@ -2530,15 +2532,15 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     if (d.rejected || !d.texto) return {text:fallback, src:'descartado'};
     const chk = verify([d.texto], allowed);
     if (chk.bad.length) return {text:fallback, src:'descartado'};
-    return {text:rich(d.texto), src:'gemini'};
+    return {text:rich(d.texto), src:'ia', prov:lastProv};
   }
-  const srcPill = r => `<span class="src-pill src-pill--${r.src}">${r.src === 'gemini' ? 'Escrito pelo Gemini' : r.src === 'descartado' ? 'Texto do Gemini descartado na checagem; versão padrão' : 'Texto padrão (modo demonstração)'}</span>`;
+  const srcPill = r => `<span class="src-pill src-pill--${r.src}">${r.src === 'ia' ? `Escrito pela IA (${r.prov || lastProv})` : r.src === 'descartado' ? 'Texto da IA descartado na checagem; versão padrão' : 'Texto padrão (modo demonstração)'}</span>`;
   async function aiDossie(c){
     if (AI_CACHE[c.name]) return AI_CACHE[c.name];
     const empresa = {nome:c.name, setor:c.setor, cidade:c.city, uf:c.uf, faturamento_estimado_mi:c.pMin ? [c.pMin, c.pMax] : null, unidades:c.filiais, fundacao:c.fund, decisor:c.cargo, ponte:c.ponte, gatilho:c.gat ? {fato:c.gat.t, fonte:c.gat.f, dias:c.gat.d} : null, hipotese_de_fit:c.fit};
     const d = await aiCall('dossie', {empresa, vendedor:me().name});
     if (!d || d.rejected || !d.abertura || !Array.isArray(d.spin) || d.spin.length < 4) return null;
-    const out = {opener:d.abertura, spin:d.spin.slice(0, 4).map(x => [x.etapa, x.pergunta, x.objetivo])};
+    const out = {opener:d.abertura, spin:d.spin.slice(0, 4).map(x => [x.etapa, x.pergunta, x.objetivo]), prov:lastProv};
     AI_CACHE[c.name] = out;
     return out;
   }
@@ -2957,7 +2959,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     const say = `${esc(c.name)} cumpre ${a.met} de 4 traços do ICP v${a.icpV}. ${c.gat ? `O gatilho é de ${c.gat.d} dias atrás.` : 'Não há gatilho recente.'} ${a.decision === 'Esperar' && a.until ? `Minha recomendação é esperar até ${fmtD(a.until)}.` : a.decision === 'Descartar' ? 'Minha recomendação é não investir tempo agora.' : 'Minha recomendação é contatar agora.'}`;
     const chk = verify([say], allowedFrom(a.c, {m:a.met, v:a.icpV, t:4, d:a.until ? [fmtD(a.until)] : []}));
     await aiDossie(c);
-    const opener = openerFor(c), spin = spinFor(c), dsrc = AI_CACHE[c.name] ? 'gemini' : 'modelo';
+    const opener = openerFor(c), spin = spinFor(c), dsrc = AI_CACHE[c.name] ? 'ia' : 'modelo';
     add(body, `
       <div class="panel-ai decide decide--${a.level}">
         <div class="decide__g">${gauge(a.score, a.level)}<span class="decide__t">${TL[a.level]}</span></div>
@@ -2976,7 +2978,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
           <div><span class="trait__k">Gatilho</span><p>${c.gat ? `${esc(c.gat.t)}.` : 'Nenhum gatilho encontrado. Não vou inventar um.'}</p>${c.gat ? `<small>Fonte: ${esc(c.gat.f)} · há ${c.gat.d} dias</small>` : ''}</div>
         </div></div>
       <div class="panel-ai"><div class="panel-ai__head"><span class="vtag">D2</span><h3>Abertura da ligação</h3><button class="btn btn--sm meta--r" type="button" data-copy>Copiar</button></div>
-        <blockquote class="opener">${esc(opener)}</blockquote>${srcPill({src:dsrc})}</div>
+        <blockquote class="opener">${esc(opener)}</blockquote>${srcPill({src:dsrc, prov:AI_CACHE[c.name]?.prov})}</div>
       <div class="panel-ai"><div class="panel-ai__head"><h3>Perguntas de diagnóstico SPIN</h3></div>
         <div class="spin">${spin.map(([e, p, o]) => `<div class="spin__r"><span class="spin__e">${e[0]}</span><div><b>${e}</b><p>${esc(p)}</p><small>${esc(o)}</small></div></div>`).join('')}</div></div>
       <div class="panel-ai"><div class="panel-ai__head"><h3>Objeções prováveis</h3><span class="meta meta--r">${sl.n} empresas parecidas na base</span></div>
@@ -3634,7 +3636,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
   const GUIDE = [
     {n:'Prospect Day', k:['como uso o prospect day','como funciona o prospect day','fila do dia','registrar ligacao','registrar uma ligacao'], t:'No Prospect Day, comece pelo primeiro lead da fila: ela já vem ordenada por temperatura. Leia o "Por que ligar hoje" e a abertura, ligue e registre o resultado com um dos sete botões, ou pelas teclas 1 a 7. Cada registro pede confirmação, aceita um comentário e atualiza o Pipeline sozinho.'},
     {n:'Pipeline', k:['pipeline','mover lead','mover um lead','criar lead','novo lead','cartao'], t:'No Pipeline, arraste o cartão do lead entre as etapas ou use "Mover para" no detalhe. Para mover para Perdido, é preciso escolher o motivo; para "Retomar em", uma data. O botão "Novo lead" cria um cartão, e o globo mostra os clientes do CITi.'},
-    {n:'Gerar ICP', k:['gerar icp','gerar um icp','novo icp','como o icp e gerado','como gerar','aprovar icp'], t:'No CITi.AI, modo ICP, a Diretoria clica em "Gerar novo ICP". O sistema calcula as taxas de cada traço, o Gemini propõe e explica a nova versão, e cada número citado é conferido. A Diretoria aprova, edita ou descarta, e cada versão fica no histórico.'},
+    {n:'Gerar ICP', k:['gerar icp','gerar um icp','novo icp','como o icp e gerado','como gerar','aprovar icp'], t:'No CITi.AI, modo ICP, a Diretoria clica em "Gerar novo ICP". O sistema calcula as taxas de cada traço e monta a proposta pelas regras, a IA escreve o resumo, e cada número citado é conferido. A Diretoria aprova, edita ou descarta, e cada versão fica no histórico.'},
     {n:'Avaliar empresa', k:['avaliar empresa','avaliar uma empresa','dossie','temperatura'], t:'No CITi.AI, modo Prospecção, digite o nome da empresa ou peça "me traga leads". O agente mostra a temperatura em quatro dimensões, a decisão (contatar, esperar ou descartar) e o dossiê para a ligação. De lá dá para adicionar o lead ao Pipeline.'},
     {n:'Análise', k:['analise','planilha','grafico','dashboard','metricas'], t:'Na Análise, os gráficos já usam os dados do Pipeline. Você pode subir uma planilha CSV ou XLSX, conferir o mapeamento das colunas e perguntar ao CITi.AI pela barra de baixo. Métricas pedidas e confirmadas podem ser fixadas no painel.'},
     {n:'Perfis', k:['perfil','permissao','permissoes','quem pode'], t:'Há três perfis. A Diretoria gera e aprova o ICP e vê tudo. A Gerência Comercial vê o time e sobe planilhas. A Gerência de Contas prospecta e vê só os próprios números.'}
@@ -3676,7 +3678,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     HIST.push({quem:'usuario', texto:text}, {quem:'citi.ai', texto:r.tipo === 'fora_da_base' ? 'fora da base' : r.texto});
     if (r.tipo === 'metrica' && r.consulta) { add(body, `<p class="say">${para(r.texto)}</p>`); return metric(body, r.consulta, null, body.closest('.an-thread') ? rowsFor() : DB, body.closest('.an-thread') ? DS.has : null); }
     if (r.tipo === 'fora_da_base') return add(body, `<p class="say">Essa pergunta eu não consigo responder com a base de dados do CITi. Nesta versão do ELO, eu não faço pesquisa online, então só respondo com o que está na base do CITi e no guia do ELO.</p><p class="fonte">Experimente perguntar sobre um conceito do Comercial, uma tela do ELO, os dados do funil ou uma empresa da base.</p>`);
-    add(body, `<p class="say">${para(r.texto)}</p>${r.fonte ? `<p class="fonte">Fonte: ${esc(r.fonte)}</p>` : ''}${srcPill({src:ok ? 'gemini' : 'modelo'})}`);
+    add(body, `<p class="say">${para(r.texto)}</p>${r.fonte ? `<p class="fonte">Fonte: ${esc(r.fonte)}</p>` : ''}${srcPill({src:ok ? 'ia' : 'modelo'})}`);
   }
   function looksMetric(text){
     const t = norm(text);
