@@ -452,6 +452,12 @@ select option{background:#151917}
 .say b{color:#fff}
 .who-ai{font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--green);margin:9px 0 -6px}
 
+.pensando{display:flex;align-items:center;gap:10px;margin-top:4px;font-size:12.5px;color:var(--muted)}
+.pensando__ico{display:inline-flex;gap:4px}
+.pensando__ico i{width:6px;height:6px;border-radius:50%;background:var(--green);opacity:.25;animation:pensa 1.2s ease-in-out infinite}
+.pensando__ico i:nth-child(2){animation-delay:.15s}.pensando__ico i:nth-child(3){animation-delay:.3s}
+@keyframes pensa{0%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
+@media (prefers-reduced-motion:reduce){.pensando__ico i{animation:none;opacity:.7}}
 .think{display:grid;gap:8px;padding:14px 16px;border-radius:16px;border:1px solid rgba(80,224,120,.2);background:rgba(80,224,120,.04);font-size:13.5px}
 .think__step{display:flex;align-items:center;gap:10px;color:var(--muted);opacity:.35;transition:opacity .3s,color .3s}
 .think__step.is-on{opacity:1;color:var(--text)}
@@ -2486,10 +2492,26 @@ details.pd-cold summary::-webkit-details-marker{display:none}
   // ---------- ponte com o Gemini (rota /api/ai na Vercel) ----------
   let aiOn = null;
   const AI_CACHE = {};
+  let aiHost = null;
+  function pensando(host){
+    if (!host) return () => {};
+    const el = document.createElement('div');
+    el.className = 'pensando'; el.setAttribute('role', 'status');
+    el.innerHTML = '<span class="pensando__ico" aria-hidden="true"><i></i><i></i><i></i></span><span class="pensando__t">Pensando na resposta</span>';
+    host.appendChild(el);
+    const box = host.closest('.an-thread') || $('thread');
+    requestAnimationFrame(() => box.scrollTop = box.scrollHeight);
+    const t0 = Date.now(), iv = setInterval(() => {
+      const sec = Math.round((Date.now() - t0) / 1000);
+      if (sec >= 5) el.lastChild.textContent = `Pensando na resposta · ${sec} s`;
+    }, 1000);
+    return () => { clearInterval(iv); el.remove(); };
+  }
   async function aiCall(task, input){
     if (aiOn === false || location.protocol === 'file:') return null;
+    const done = pensando(aiHost);
     try {
-      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 15000);
+      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 58000);
       const r = await fetch('/api/ai', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({task, input}), signal:ctl.signal});
       clearTimeout(t);
       if (r.status === 404 || r.status === 503 || r.status === 405 || r.status === 504) { aiOn = false; return null; }
@@ -2498,6 +2520,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
       aiOn = true;
       return j.ok ? j.data : {rejected:true, bad:j.bad || [], reason:j.reason || ''};
     } catch (e) { if (e.name === 'AbortError') aiOn = false; return null; }
+    finally { done(); }
   }
   const strip = h => String(h).replace(/<[^>]+>/g, '');
   const rich = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
@@ -2542,7 +2565,8 @@ details.pd-cold summary::-webkit-details-marker{display:none}
   async function run(text, fn){
     if (busy) return; busy = true;
     if (text) userMsg(text);
-    try { await fn(aiShell()); } finally { busy = false; renderSugs(); scroll(); }
+    const body = aiShell(); aiHost = body;
+    try { await fn(body); } finally { busy = false; aiHost = null; renderSugs(); scroll(); }
   }
 
   // ---------- blocos visuais ----------
@@ -3270,7 +3294,8 @@ details.pd-cold summary::-webkit-details-marker{display:none}
   async function aRun(text, fn){
     if (aBusy) return; aBusy = true; $('anChat').classList.add('is-on');
     if (text) anThread.insertAdjacentHTML('beforeend', `<div class="msg msg--me"><div class="msg__body">${esc(text)}</div></div>`);
-    try { await fn(aShell()); } finally { aBusy = false; aScroll(); }
+    const body = aShell(); aiHost = body;
+    try { await fn(body); } finally { aBusy = false; aiHost = null; aScroll(); }
   }
   const MONTH_RX = /(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-zç]*(?:\s*(?:de|\/)?\s*(20)?(25|26))?/;
   async function answer(body, q){
@@ -3633,6 +3658,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
         icp_vigente:{versao:c.v, porte:`R$${c.pMin} a R$${c.pMax} mi por ano`, regiao:c.regiao, tradicional:c.trad, unidades_minimas:c.minFil, anti_perfil:c.anti, persona:c.persona},
         pipeline_agora:{leads_por_etapa:etapas, leads_quentes:pl.filter(l => l.temp?.level === 'quente').length, sem_atividade_7_dias:stale(7).length},
         historico_funil:{leads:m.all.n, taxa_de_avanco_pct:m.all.ar, maior_queda:m.worst ? `${m.worst.from} para ${m.worst.to}: ${m.worst.r}% passam` : null, motivos_de_perda:m.mot.slice(0, 4).map(x => `${x.label}: ${x.n}`), melhores_origens:m.origem.slice(0, 2).map(x => `${x.label}: ${x.ar}% de avanço`)},
+        empresas_da_base:DIR.map(d => `${d.name} (${d.setor}, ${d.city}/${d.uf})`),
         prospect_day_hoje:{ligacoes:PD.log.length, reunioes:PD.log.filter(x => x.k === 'rm').length},
         observacao:'Todos os dados do ELO nesta demonstração são fictícios.'
       },
@@ -3680,8 +3706,16 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     $('sugsIn').innerHTML = list.join(''); $('sugsN').textContent = list.length;
     $('sugsWrap').classList.toggle('is-empty', !list.length);
   }
+  async function listCompanies(body){
+    await think(body, [['Lendo a base de empresas do ELO', 'Sistema'], ['Calculando a temperatura de cada uma', 'Código']]);
+    const rows = DIR.map(c => ({c, a:assess(c)})).sort((x, y) => ({quente:0, morno:1, frio:2}[x.a.level] - {quente:0, morno:1, frio:2}[y.a.level]));
+    add(body, `<p class="say">A base do ELO tem <b>${DIR.length} empresas</b>, todas fictícias. Digite o nome de uma para ver a avaliação completa e o dossiê.</p>
+      <div class="claims">${rows.map(({c, a}) => `<div class="claim"><div class="claim__t"><b>${esc(c.name)}</b> · ${esc(c.setor)}, ${esc(c.city)}/${esc(c.uf)}</div><div class="claim__f"><span class="tchip tchip--${a.level}">${TLv[a.level]}</span></div></div>`).join('')}</div>`);
+  }
+  const isQuestion = t => /\?|^(o que|oq|oque|como|qual|quais|quem|quando|onde|por que|porque|pq|me explica|explique|explica|existe|tem como)\b/.test(t);
   function route(text){
     const t = norm(text);
+    if (/\b(quais|que|lista\w*|mostr\w*|ver)\b.*\bempresas\b|\bempresas (da|na|estao na|tem na) base\b/.test(t) && !/icp|parecid/.test(t)) return run(text, listCompanies);
     if (/\b(traga|sugira|encontre|busque|indique)\b.*\bleads?\b|^(novos )?leads?$|quais leads (ligar|contatar)/.test(t)) return run(text, bring);
     if (findDir(text)) return run(text, b => evaluate(b, text));
     if (/^(avaliar|avalie|analisar|analise|dossie de|dossie da|dossie do)\s+\S/.test(t)) return run(text, b => evaluate(b, text));
@@ -3690,6 +3724,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     if (/^(ver|mostrar|mostre|qual (e|eh) o) (o )?icp( vigente| atual)?\??$|^icp( vigente| atual)?\??$/.test(t)) return run(text, showCurrent);
     if (/dados que alimentam|o que alimenta o icp/.test(t)) return run(text, showData);
     if (looksMetric(text)) return run(text, b => metric(b, text));
+    if (mode === 'prospeccao' && !isQuestion(t) && t.split(/\s+/).length <= 6) return run(text, b => evaluate(b, text));
     return run(text, b => converse(b, text));
   }
   $('sugs').addEventListener('click', e => {
