@@ -2494,15 +2494,15 @@ details.pd-cold summary::-webkit-details-marker{display:none}
   async function aiCall(task, input){
     if (aiOn === false || location.protocol === 'file:') return null;
     try {
-      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 12000);
+      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), task === 'web' ? 28000 : 15000);
       const r = await fetch('/api/ai', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({task, input}), signal:ctl.signal});
       clearTimeout(t);
       if (r.status === 404 || r.status === 503 || r.status === 405) { aiOn = false; return null; }
       const j = await r.json().catch(() => null);
       if (!j) return null;
       aiOn = true;
-      return j.ok ? j.data : {rejected:true, bad:j.bad || []};
-    } catch (e) { return null; }
+      return j.ok ? j.data : {rejected:true, bad:j.bad || [], reason:j.reason || ''};
+    } catch (e) { return e.name === 'AbortError' ? {rejected:true, reason:'a pesquisa demorou mais que o limite de espera'} : null; }
   }
   const strip = h => String(h).replace(/<[^>]+>/g, '');
   const rich = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
@@ -3667,7 +3667,7 @@ details.pd-cold summary::-webkit-details-marker{display:none}
     await think(body, [['Pesquisando na internet', 'IA'], ['Separando as fontes', 'Sistema']]);
     const d = await aiCall('web', {pergunta:q});
     if (!d || d.rejected || !d.texto){
-      add(body, `<p class="say">Não consegui pesquisar na internet agora. ${aiOn === false || location.protocol === 'file:' ? 'A busca precisa do Gemini configurado no servidor do ELO.' : 'Tente de novo em alguns instantes.'}</p>`);
+      add(body, `<p class="say">Não consegui pesquisar na internet agora. ${aiOn === false || location.protocol === 'file:' ? 'A busca precisa do Gemini configurado no servidor do ELO.' : /429|quota|RESOURCE_EXHAUSTED/i.test(d?.reason || '') ? 'O limite gratuito do Gemini foi atingido; tente de novo em alguns minutos.' : 'Tente de novo em alguns instantes.'}</p>${d?.reason ? `<p class="fonte">Detalhe técnico: ${esc(d.reason)}</p>` : ''}`);
       return;
     }
     add(body, `<p class="say">${para(d.texto)}</p>${d.fontes?.length ? `<div class="srcs"><b>Fontes</b>${d.fontes.slice(0, 5).map(f => `<a href="${esc(f.uri)}" target="_blank" rel="noopener">${esc(f.title || f.uri)}</a>`).join('')}</div>` : ''}<span class="src-pill src-pill--web">Fonte externa: internet, via Gemini com Google Search. Confira as fontes.</span>`);
